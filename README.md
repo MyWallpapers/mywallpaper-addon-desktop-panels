@@ -39,13 +39,15 @@ Versioned button JSON is stored in the SDK's **device settings**, partitioned by
 
 The layout uses a 1600 × 900 reference canvas and scales proportionally to the available layer. It does not change the browser zoom or the Windows taskbar. New installs start empty; demonstration data exists only in the preview and thumbnail modes.
 
-## Current Desktop integration limit
+## Temporary scope
 
-The existing Canvas API makes buttons DOM-interactive (`pointerEvents: auto`). The current Windows desktop host additionally filters discrete clicks/wheels through host-owned interaction rectangles; add-ons do not currently publish those regions. Consequently, functionality in the interface or standalone preview does **not** establish that these buttons receive clicks in wallpaper mode beneath Explorer.
+This version is a temporary, ordinary add-on using the existing Canvas, native companion and device-settings contracts. It includes no Core changes, Explorer modifications, cross-copy synchronization service or additional storage API.
 
-The add-on does not bypass this host filter, install global input hooks, or modify Explorer. Completing that desktop integration requires a generic host input-routing correction using the existing layer pointer policy. Routing alone is insufficient: the current transparent desktop window can also leave the physical click to Explorer, potentially activating an icon behind a web button. Input ownership must therefore be qualified against actual Windows desktop icons, including overlapping controls and single/double clicks, rather than simply forwarding more events. This remains outside this add-on checkout. Do not publish it as a complete desktop replacement until that path is qualified.
+Each layer reads its own button collection from the standard local device settings. There is no automatic transfer of a collection to another wallpaper. Use the existing JSON export/import controls to carry a configuration manually; the JSON contains references to local files, not the files themselves.
 
-The current public device-settings API also replaces a whole setting value without a compare-and-swap/record-merge operation. The per-layer JSON partition prevents ordinary copies from sharing a layout, but concurrent saves from separate copies can overwrite a stale aggregate. Editing one copy at a time is sufficient for this local exploration; publication must first qualify a generic atomic settings mechanism rather than add an ad-hoc synchronization protocol or a launcher-specific Core store.
+Concurrent edits across different copies use the host's existing whole-value save behavior; this temporary version adds no conflict-resolution mechanism. The existing Windows desktop pointer routing also remains unchanged. The browser preview exercises the editor and actions but does not establish Windows desktop hit-testing behavior.
+
+Open the preview through `http://localhost:5194/`, not by opening `index.html` as a `file://` URL: Vite serves the TypeScript modules and preview assets.
 
 ## Resource bounds and checks
 
