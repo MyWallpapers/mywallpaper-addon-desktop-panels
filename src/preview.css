@@ -1,0 +1,21 @@
+html, body { margin: 0; height: 100%; }
+body { background: #0c1019; color: #f2f4f8; font: 14px/1.45 'Desktop Outfit', sans-serif; }
+#preview { height: 100%; display: flex; flex-direction: column; }
+.dp-preview-header { padding: 18px 26px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.dp-preview-header strong { display: block; font-size: 18px; font-weight: 500; letter-spacing: -.02em; }
+.dp-preview-header span { color: #b0b8c6; font-size: 12px; }
+.dp-preview-header nav { display: flex; align-items: center; gap: 18px; }
+.dp-preview-header a { color: #bdd6ff; text-decoration: none; }
+.dp-preview-header a:hover { text-decoration: underline; text-underline-offset: 4px; }
+.dp-preview-header button { background: #e1edff; color: #111b2c; border: none; border-radius: 99px; padding: 10px 16px; font: inherit; cursor: pointer; }
+.dp-preview-header :is(a, button):focus-visible { outline: 2px solid #bbd8ff; outline-offset: 3px; }
+.dp-preview-desktop { flex: 1; min-height: 0; position: relative; margin: 0 18px; overflow: hidden; border-radius: 16px; background: radial-gradient(ellipse at 90% 80%, #583f4848, transparent 55%), radial-gradient(ellipse at 30% 0%, #4a617955, transparent 65%), #0d1420; }
+.dp-preview-footer { font-size: 12px; color: #b0b8c6; padding: 12px 26px; }
+@media (max-width: 600px) {
+  .dp-preview-header { padding: 12px; flex-wrap: wrap; }
+  .dp-preview-header nav { width: 100%; justify-content: space-between; gap: 8px; }
+  .dp-preview-header a { font-size: 12px; }
+  .dp-preview-header button { padding: 8px 12px; }
+  .dp-preview-desktop { margin: 0 6px; }
+  .dp-preview-footer { padding: 10px 12px; }
+}

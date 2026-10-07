@@ -1,0 +1,18 @@
+{
+  "runtime": "canvas-native-v1",
+  "name": "Desktop Panels",
+  "description": "Compose your own desktop buttons: shapes, artwork, hover videos and Windows shortcuts. Local targets stay on this device.",
+  "version": "0.1.0",
+  "entry": "dist/assets/addon.js",
+  "thumbnail": "assets/thumbnail.jpg",
+  "deviceSettingsVersion": "1",
+  "ui": { "pointerEvents": "auto" },
+  "native": { "companion": { "runtime": "process-v2", "entries": { "windows-x86_64": "native/out/windows-x86_64/bin/desktop-panels.exe" } } },
+  "settings": [
+    { "id": "editButtons", "type": "button", "label": "Buttons", "buttonLabel": "Manage buttons", "description": "Add, position and style your shortcuts in the visual editor." },
+    { "id": "opacity", "type": "range", "label": "Surface opacity", "scope": "layer", "min": 0.1, "max": 1, "step": 0.05, "default": 0.7 },
+    { "id": "language", "type": "select", "label": "Language", "scope": "layer", "default": "auto", "options": [{ "value": "auto", "label": "Automatic" }, { "value": "fr", "label": "Français" }, { "value": "en", "label": "English" }] },
+    { "id": "advanced", "type": "section", "label": "Local configuration", "defaultCollapsed": true },
+    { "id": "collection", "parent": "advanced", "type": "textarea", "label": "Button data", "description": "Managed by the visual editor. Each layer has its own layout. File paths and media references are kept on this device, never cloud-synced.", "scope": "device", "default": "{\"version\":1,\"layers\":{}}" }
+  ]
+}
