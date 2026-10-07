@@ -22,8 +22,8 @@ export interface Client {
   request<T>(action: string, input?: Record<string, unknown>): Promise<T>
   close(): void
 }
-// Keep room for host metadata in the process-v2 initial single-chunk record.
-export const MAX_CONFIG_BYTES = 512 * 1024
+// Both settings strings are escaped again in the process-v2 1 MiB init record.
+export const MAX_CONFIG_BYTES = 192 * 1024
 export const configFits = (value: string): boolean => value.length <= MAX_CONFIG_BYTES && new TextEncoder().encode(value).byteLength <= MAX_CONFIG_BYTES
 export const emptyCollection = (): Collection => ({ version: 1, width: 1600, height: 900, buttons: [] })
 export const clamp = (n: number, min: number, max: number): number => Math.max(min, Math.min(max, n))

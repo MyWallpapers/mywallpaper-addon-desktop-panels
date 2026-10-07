@@ -5,7 +5,7 @@ A MyWallpaper add-on for composing a personal desktop launcher from web buttons.
 ## What is implemented
 
 - One visual add-on containing a collection of buttons, not independent sub-add-ons.
-- A visual editor opened by **Manage buttons** in the existing MyWallpaper settings.
+- A visual editor opened by **Manage buttons** in the existing MyWallpaper settings, with **Import configuration** and **Export configuration** actions there as well.
 - Rectangles with adjustable corners, ellipses, triangles and hexagons; per-button size, position, color, label and icon.
 - Pointer drag and resize; numeric position/size fields; arrow keys move a focused button by one canvas unit, Shift + arrow by ten.
 - Images and muted, looping videos, including playback only on hover/focus.
@@ -35,7 +35,9 @@ The web layer owns the editor and layout. A small Rust `process-v2` companion ow
 
 The companion runs with ordinary user privileges after MyWallpaper's exact native add-on consent. This is not an OS sandbox or a narrow file-picker permission. Windows may independently ask for permission if the user opens an application that requires it.
 
-Versioned button JSON is stored in the SDK's **device settings**, partitioned by stable layer ID. Copies remain independent, and paths/arguments/media references are not cloud-synced. The settings mechanism retains its existing account, add-on source and schema isolation. Media bytes are read only when needed; moving or deleting an original media file requires selecting it again. Explicit JSON exports contain local paths and should be shared deliberately.
+The versioned layout JSON uses ordinary **layer settings**: shapes, positions, colors, names and shared URLs follow the wallpaper, so applying a wallpaper restores its creator's layout. Private application/file targets, arguments and local media paths use **device settings**, partitioned by layer and button ID. They never enter the published wallpaper. The existing host retains account, add-on source and schema isolation. Copies remain independent.
+
+The editor combines both sets of values transparently. **Export configuration** saves a complete JSON backup, including local references; **Import configuration** loads it into the editor for confirmation. Exports do not embed media files, and local references must exist on the receiving PC. Media bytes are read only when needed; moving or deleting an original media file requires selecting it again.
 
 The layout uses a 1600 × 900 reference canvas and scales proportionally to the available layer. It does not change the browser zoom or the Windows taskbar. New installs start empty; demonstration data exists only in the preview and thumbnail modes.
 
@@ -43,7 +45,7 @@ The layout uses a 1600 × 900 reference canvas and scales proportionally to the 
 
 This version is a temporary, ordinary add-on using the existing Canvas, native companion and device-settings contracts. It includes no Core changes, Explorer modifications, cross-copy synchronization service or additional storage API.
 
-Each layer reads its own button collection from the standard local device settings. There is no automatic transfer of a collection to another wallpaper. Use the existing JSON export/import controls to carry a configuration manually; the JSON contains references to local files, not the files themselves.
+Each layer keeps the layout supplied by its wallpaper unless the user edits it or imports another configuration. There is no automatic global replacement of layouts when changing wallpaper; JSON export/import provides explicit manual reuse.
 
 Concurrent edits across different copies use the host's existing whole-value save behavior; this temporary version adds no conflict-resolution mechanism. The existing Windows desktop pointer routing also remains unchanged. The browser preview exercises the editor and actions but does not establish Windows desktop hit-testing behavior.
 
@@ -51,7 +53,7 @@ Open the preview through `http://localhost:5194/`, not by opening `index.html` a
 
 ## Resource bounds and checks
 
-Images: at most 12 MiB per source. Videos: at most 64 MiB. Native media transfers use 256 KiB chunks. The local payload/Blob cache is bounded to 96 MiB and 48 entries; visible decoded browser media uses additional memory. Offscreen videos and hidden documents are paused, and only one hover-triggered video is activated at a time. The editor caps a collection at 1024 buttons and device data at 512 KiB UTF-8 to bound serialization and leave room for host metadata in the process-v2 initial single-chunk record.
+Images: at most 12 MiB per source. Videos: at most 64 MiB. Native media transfers use 256 KiB chunks. The local payload/Blob cache is bounded to 96 MiB and 48 entries; visible decoded browser media uses additional memory. Offscreen videos and hidden documents are paused, and only one hover-triggered video is activated at a time. The editor caps a collection at 1024 buttons and each configuration value at 192 KiB UTF-8, leaving room for both escaped settings values and host metadata in the process-v2 initial single-chunk record.
 
 Native protocol/target/media validation tests exercise IPC v4/v5 framing and rejection boundaries. The build is pinned and Windows link timestamps/debug data are disabled for deterministic release builds. The central MyWallpaper builder remains the only authority for publication, independent rebuild attestation and native admission.
 

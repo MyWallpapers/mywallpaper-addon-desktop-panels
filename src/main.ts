@@ -3,19 +3,26 @@ import type { CanvasAddonMountContext } from '../generated/mywallpaper-runtime'
 import { nativeClient } from './client'
 import { demoClient, demoCollection } from './demo'
 import { createPanels } from './panels'
-import { readLayer, writeLayer } from './storage'
+import { readCollection, splitCollection } from './storage'
 
 export function mount({ layer, runtime }: CanvasAddonMountContext): () => void {
   const thumbnail = runtime.mode === 'thumbnail'
   const client = thumbnail ? demoClient(() => {}) : nativeClient(layer)
+  const collection = () => readCollection(layer.settings.get().collection, layer.deviceSettings.get().localBindings, layer.layerId)
   const app = createPanels(layer.root, client, {
-    settings: layer.settings.get(), collection: thumbnail ? JSON.stringify(demoCollection()) : readLayer(layer.deviceSettings.get().collection, layer.layerId),
-    save: c => layer.deviceSettings.set({ collection: writeLayer(layer.deviceSettings.get().collection, layer.layerId, c) }), thumbnail,
+    settings: layer.settings.get(), collection: thumbnail ? JSON.stringify(demoCollection()) : collection(),
+    async save(c) {
+      const split = splitCollection(c, layer.deviceSettings.get().localBindings, layer.layerId)
+      await layer.deviceSettings.set({ localBindings: split.deviceSettings })
+      await layer.settings.set({ collection: JSON.stringify(split.portable) })
+    }, thumbnail,
   })
   const stops = [
     layer.actions.on('editButtons', () => app.edit()),
-    layer.settings.subscribe(values => app.configure(values)),
-    layer.deviceSettings.subscribe(values => app.load(readLayer(values.collection, layer.layerId))),
+    layer.actions.on('importButtons', () => app.importConfiguration()),
+    layer.actions.on('exportButtons', () => app.exportConfiguration()),
+    layer.settings.subscribe(values => { app.configure(values); if (!thumbnail) app.load(collection()) }),
+    layer.deviceSettings.subscribe(() => { if (!thumbnail) app.load(collection()) }),
   ]
   let disposed = false
   const cleanup = () => {

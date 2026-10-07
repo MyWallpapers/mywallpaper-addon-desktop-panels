@@ -14,8 +14,9 @@ const en: Record<string, string> = {
   'Application': 'Application', 'Fichier': 'File', 'Lien': 'Link', 'Musique': 'Music', 'Image': 'Image', 'Visuel': 'Visual',
   'Aucun': 'None', 'Vidéo': 'Video', 'Choisir un média': 'Choose media', 'Lien HTTPS du média': 'HTTPS media link',
   'Vidéo au survol uniquement': 'Play video only on hover', 'Dimensions et position': 'Size and position', 'Largeur': 'Width', 'Hauteur': 'Height',
-  'Dupliquer': 'Duplicate', 'Supprimer': 'Delete', 'Configuration locale': 'Local configuration', 'Importer un fichier': 'Import a file',
-  'Exporter': 'Export', 'Les chemins et médias restent sur cet ordinateur.': 'Paths and media stay on this device.',
+  'Dupliquer': 'Duplicate', 'Supprimer': 'Delete', 'Importer un fichier': 'Import a file',
+  'Exporter': 'Export', 'Configuration': 'Configuration',
+  'La disposition suit le wallpaper. Les chemins locaux restent sur ce PC.': 'The layout follows the wallpaper. Local paths stay on this PC.',
   'Disposition enregistrée.': 'Layout saved.', 'Un nom est nécessaire.': 'Enter a label.', 'Choisissez d’abord une cible.': 'Choose a target first.',
   'Fermer': 'Close', 'Choisir les raccourcis': 'Choose shortcuts', 'Les fichiers d’origine restent intacts.': 'Original files remain unchanged.',
   'Tout sélectionner': 'Select all', 'Aucun raccourci trouvé sur le bureau.': 'No desktop shortcuts found.',
@@ -23,6 +24,7 @@ const en: Record<string, string> = {
   'Abandonner les modifications ?': 'Discard unsaved changes?', 'Impossible d’enregistrer. Réessayez.': 'Could not save. Try again.',
   'Impossible de charger la configuration.': 'Could not load configuration.', 'Déplacer': 'Move', 'Redimensionner': 'Resize',
   'Enregistrement…': 'Saving…', 'Chargement…': 'Loading…', 'Choisissez un bouton dans la liste ou sur le canvas.': 'Choose a button in the list or on the canvas.',
+  'La configuration est trop volumineuse.': 'The configuration is too large.',
 }
 const h = (value: unknown): string => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
@@ -155,7 +157,7 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
     host.style.setProperty('--surface-opacity', String(typeof settings.opacity === 'number' ? settings.opacity : 0.7))
     host.setAttribute('lang', french() ? 'fr' : 'en')
     const c = current()
-    body.innerHTML = (editing ? '<header class="dp-editor-header"><div class="dp-editor-title">Desktop Panels <span>' + h(t('Boutons')) + '</span></div><div class="dp-toolbar">' + buttonHtml('plus', 'Ajouter', 'add') + buttonHtml('import', 'Importer du bureau', 'desktop', 'dp-import-desktop') + '</div><div class="dp-editor-finish">' + buttonHtml('close', 'Annuler', 'cancel', '', busy) + buttonHtml('check', busy ? 'Enregistrement…' : 'Terminer', 'done', 'dp-primary', busy) + '</div></header><div class="dp-workspace"><aside class="dp-list"><div class="dp-list-heading">' + h(t('Boutons')) + '</div><div class="dp-list-items">' + c.buttons.map(b => '<button class="dp-list-row' + (b.id === selected ? ' is-selected' : '') + '" data-select="' + h(b.id) + '" aria-pressed="' + String(b.id === selected) + '">' + icon(b.icon) + '<span>' + h(b.label) + '</span></button>').join('') + '</div><details class="dp-local"><summary>' + h(t('Configuration locale')) + '</summary>' + buttonHtml('import', 'Importer un fichier', 'jsonImport') + buttonHtml('export', 'Exporter', 'export') + '<p>' + h(t('Les chemins et médias restent sur cet ordinateur.')) + '</p></details></aside><div class="dp-canvas-column"><div class="dp-canvas-label"><span>' + h(t('Votre bureau, à votre façon.')) + '</span><span>' + c.width + ' × ' + c.height + '</span></div><div class="dp-viewport"><div class="dp-stage"></div></div></div><aside class="dp-inspector"></aside></div>' : '<div class="dp-viewport"><div class="dp-stage"></div></div>' + (!options.thumbnail && c.buttons.length === 0 ? '<div class="dp-empty"><div>' + icon('app') + '</div><h2>' + h(t('Créez votre premier raccourci.')) + '</h2><p>' + h(t('Choisissez une forme, un visuel et une action.')) + '</p>' + buttonHtml('plus', 'Ajouter un bouton', 'edit') + '</div>' : ''))
+    body.innerHTML = (editing ? '<header class="dp-editor-header"><div class="dp-editor-title">Desktop Panels <span>' + h(t('Boutons')) + '</span></div><div class="dp-toolbar">' + buttonHtml('plus', 'Ajouter', 'add') + buttonHtml('import', 'Importer du bureau', 'desktop', 'dp-import-desktop') + '</div><div class="dp-editor-finish">' + buttonHtml('close', 'Annuler', 'cancel', '', busy) + buttonHtml('check', busy ? 'Enregistrement…' : 'Terminer', 'done', 'dp-primary', busy) + '</div></header><div class="dp-workspace"><aside class="dp-list"><div class="dp-list-heading">' + h(t('Boutons')) + '</div><div class="dp-list-items">' + c.buttons.map(b => '<button class="dp-list-row' + (b.id === selected ? ' is-selected' : '') + '" data-select="' + h(b.id) + '" aria-pressed="' + String(b.id === selected) + '">' + icon(b.icon) + '<span>' + h(b.label) + '</span></button>').join('') + '</div><details class="dp-local"><summary>' + h(t('Configuration')) + '</summary>' + buttonHtml('import', 'Importer un fichier', 'jsonImport') + buttonHtml('export', 'Exporter', 'export') + '<p>' + h(t('La disposition suit le wallpaper. Les chemins locaux restent sur ce PC.')) + '</p></details></aside><div class="dp-canvas-column"><div class="dp-canvas-label"><span>' + h(t('Votre bureau, à votre façon.')) + '</span><span>' + c.width + ' × ' + c.height + '</span></div><div class="dp-viewport"><div class="dp-stage"></div></div></div><aside class="dp-inspector"></aside></div>' : '<div class="dp-viewport"><div class="dp-stage"></div></div>' + (!options.thumbnail && c.buttons.length === 0 ? '<div class="dp-empty"><div>' + icon('app') + '</div><h2>' + h(t('Créez votre premier raccourci.')) + '</h2><p>' + h(t('Choisissez une forme, un visuel et une action.')) + '</p>' + buttonHtml('plus', 'Ajouter un bouton', 'edit') + '</div>' : ''))
     viewport = body.querySelector('.dp-viewport') as HTMLElement
     stage = body.querySelector('.dp-stage') as HTMLElement
     resize = new ResizeObserver(fit); resize.observe(viewport); fit()
@@ -368,7 +370,7 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
         const input = document.createElement('input'); input.type = 'file'; input.accept = '.json,application/json'
         input.addEventListener('change', () => {
           const file = input.files?.[0]; if (!file) return
-          if (file.size > MAX_CONFIG_BYTES) { notice('The selected configuration exceeds the 512 KiB limit.'); return }
+          if (file.size > MAX_CONFIG_BYTES) { notice(t('La configuration est trop volumineuse.')); return }
           void file.text().then(value => { if (!disposed && editing) { draft = parseCollection(value); selected = draft.buttons[0]?.id; setDirty(); render() } }).catch(error => notice(String(error)))
         }, { once: true }); input.click()
       }
@@ -382,6 +384,8 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
   render()
   return {
     edit, notice,
+    exportConfiguration() { void action('export') },
+    importConfiguration() { edit(); if (editing) void action('jsonImport') },
     configure(values: AddonValues) { settings = values; if (!disposed) render() },
     load(value: unknown) { if (!disposed && !editing && read(value)) render() },
     dispose() {
