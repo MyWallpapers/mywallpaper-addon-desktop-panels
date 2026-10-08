@@ -13,17 +13,19 @@ use windows::Win32::System::Com::{
 use windows::Win32::UI::Shell::Common::COMDLG_FILTERSPEC;
 use windows::Win32::UI::Shell::{
     FOLDERID_Desktop, FOLDERID_PublicDesktop, FOS_FILEMUSTEXIST, FOS_FORCEFILESYSTEM,
-    FOS_NODEREFERENCELINKS, FOS_PATHMUSTEXIST, FOS_PICKFOLDERS, FileOpenDialog, IFileOpenDialog,
+    FOS_NODEREFERENCELINKS, FOS_OVERWRITEPROMPT, FOS_PATHMUSTEXIST, FOS_PICKFOLDERS,
+    FileOpenDialog, FileSaveDialog, IFileDialog, IFileOpenDialog, IFileSaveDialog,
     SEE_MASK_FLAG_NO_UI, SHELLEXECUTEINFOW, SHGetKnownFolderPath, SIGDN_FILESYSPATH,
     ShellExecuteExW,
 };
 use windows::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
-use windows::core::{PCWSTR, w};
+use windows::core::{Interface, PCWSTR, w};
 
 use crate::protocol::{read_json_record, write_json_record};
 use crate::validation::{
-    MEDIA_CHUNK_BYTES, MediaKind, TargetKind, classify_target, media_kind_for_path,
-    normalize_canonical_windows_path, validate_arguments, validate_media_size,
+    MAX_CONFIGURATION_BYTES, MEDIA_CHUNK_BYTES, MediaKind, TargetKind, classify_target,
+    media_kind_for_path, normalize_canonical_windows_path, read_configuration, validate_arguments,
+    validate_configuration, validate_media_size,
 };
 
 const ALLOWED_PROTOCOLS: [u32; 2] = [4, 5];
@@ -157,6 +159,14 @@ fn handle_command(payload: &Value, com_available: bool) -> Value {
                 pick_media(media_kind)
             }
             "desktopEntries" => desktop_entries(),
+            "importConfiguration" => {
+                require_com(com_available)?;
+                import_configuration()
+            }
+            "exportConfiguration" => {
+                require_com(com_available)?;
+                export_configuration(string_field(input, "configuration")?)
+            }
             "open" => {
                 require_com(com_available)?;
                 let target = string_field(input, "target")?;
@@ -208,6 +218,95 @@ fn string_field<'a>(
         .get(name)
         .and_then(Value::as_str)
         .ok_or_else(|| format!("Command field `{name}` must be a string."))
+}
+
+fn configuration_dialog(save: bool) -> Result<Option<PathBuf>, String> {
+    let dialog: IFileDialog = if save {
+        let dialog: IFileSaveDialog =
+            unsafe { CoCreateInstance(&FileSaveDialog, None, CLSCTX_INPROC_SERVER) }
+                .map_err(|error| format!("Could not create the save dialog: {error}"))?;
+        dialog.cast()
+    } else {
+        let dialog: IFileOpenDialog =
+            unsafe { CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER) }
+                .map_err(|error| format!("Could not create the import dialog: {error}"))?;
+        dialog.cast()
+    }
+    .map_err(|error| format!("Could not initialize the configuration dialog: {error}"))?;
+    let mut options = unsafe { dialog.GetOptions() }
+        .map_err(|error| format!("Could not read dialog options: {error}"))?;
+    options |= FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST;
+    options |= if save {
+        FOS_OVERWRITEPROMPT
+    } else {
+        FOS_FILEMUSTEXIST
+    };
+    let filters = [COMDLG_FILTERSPEC {
+        pszName: w!("JSON configuration"),
+        pszSpec: w!("*.json"),
+    }];
+    (|| unsafe {
+        dialog.SetOptions(options)?;
+        dialog.SetFileTypes(&filters)?;
+        dialog.SetDefaultExtension(w!("json"))?;
+        dialog.SetTitle(if save {
+            w!("Export Desktop Panels configuration")
+        } else {
+            w!("Import Desktop Panels configuration")
+        })?;
+        if save {
+            dialog.SetFileName(w!("desktop-panels.json"))?;
+        }
+        Ok::<_, windows::core::Error>(())
+    })()
+    .map_err(|error| format!("Could not configure the dialog: {error}"))?;
+    if let Err(error) = unsafe { dialog.Show(None) } {
+        if error.code().0 as u32 == 0x8007_04c7 {
+            return Ok(None);
+        }
+        return Err(format!("Configuration dialog failed: {error}"));
+    }
+    let item = unsafe { dialog.GetResult() }
+        .map_err(|error| format!("Could not read the selected configuration: {error}"))?;
+    let raw = unsafe { item.GetDisplayName(SIGDN_FILESYSPATH) }
+        .map_err(|error| format!("Could not read the selected path: {error}"))?;
+    let path = unsafe { raw.to_string() }
+        .map_err(|error| format!("Could not decode the selected path: {error}"));
+    unsafe { CoTaskMemFree(Some(raw.0.cast())) };
+    let path = PathBuf::from(path?);
+    if !path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+    {
+        return Err("Choose a JSON configuration file.".to_owned());
+    }
+    Ok(Some(path))
+}
+
+fn import_configuration() -> Result<Value, String> {
+    let Some(path) = configuration_dialog(false)? else {
+        return Ok(Value::Null);
+    };
+    let file =
+        File::open(path).map_err(|error| format!("Could not open the configuration: {error}"))?;
+    let metadata = file
+        .metadata()
+        .map_err(|error| format!("Could not inspect the configuration: {error}"))?;
+    if !metadata.is_file() || metadata.len() > MAX_CONFIGURATION_BYTES as u64 {
+        return Err("Select a regular JSON file of at most 192 KiB.".to_owned());
+    }
+    read_configuration(file).map(Value::String)
+}
+
+fn export_configuration(value: &str) -> Result<Value, String> {
+    validate_configuration(value)?;
+    let Some(path) = configuration_dialog(true)? else {
+        return Ok(Value::Null);
+    };
+    fs::write(path, value.as_bytes())
+        .map_err(|error| format!("Could not save the configuration: {error}"))?;
+    Ok(Value::Null)
 }
 
 fn pick_target(kind: &str, media_filter: Option<MediaKind>) -> Result<Value, String> {

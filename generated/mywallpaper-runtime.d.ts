@@ -13,12 +13,43 @@ export type RuntimeInstance = {
 	width: number;
 	height: number;
 };
+type SettingType = "string" | "textarea" | "number" | "range" | "boolean" | "select" | "color" | "vector2" | "vector3" | "resource" | "section" | "button";
 export type ResourceValue = {
 	"kind": "live";
 	url: string;
 } | {
 	"kind": "cached-public";
 	url: string;
+};
+type SettingScope = "layer" | "device";
+type SettingCondition = {
+	setting: string;
+	equals: JsonValue;
+};
+type SettingOption = {
+	value: string;
+	label: string;
+};
+export type SettingDefinition = {
+	id: string;
+	type: SettingType;
+	label?: string;
+	description?: string;
+	parent?: string;
+	defaultCollapsed?: boolean;
+	showIf?: SettingCondition;
+	scope?: SettingScope;
+	default?: JsonValue;
+	placeholder?: string;
+	min?: number;
+	max?: number;
+	step?: number;
+	options?: Array<SettingOption>;
+	multiple?: boolean;
+	maxItems?: number;
+	alpha?: boolean;
+	axisLabels?: Array<string>;
+	buttonLabel?: string;
 };
 export type AddonValues = Record<string, JsonValue>;
 interface ServiceCaller {
@@ -146,6 +177,24 @@ export interface CanvasEditorTargetTransformEvent {
 	previousGeometry: CanvasEditorTargetGeometry;
 }
 export type CanvasEditorTargetTransformHandler = (event: CanvasEditorTargetTransformEvent) => void | AddonValues;
+/** Native host controls for the selected child, or the root when targetId is null. */
+export interface CanvasEditorInspector {
+	settings: readonly SettingDefinition[];
+	values: AddonValues;
+}
+/** Persist only declared root settings. Device values never enter wallpaper data. */
+export interface CanvasEditorSettingsPatch {
+	layer?: AddonValues;
+	device?: AddonValues;
+}
+export interface CanvasEditorInspectorAdapter {
+	/** Read-only description; use the same field definitions as ordinary settings. */
+	get(targetId: string | null): CanvasEditorInspector;
+	/** Return data, never persist from this callback. The host validates and saves it. */
+	change(targetId: string | null, values: AddonValues): CanvasEditorSettingsPatch | void;
+	/** Pickers may be asynchronous. A stale result is discarded before any save. */
+	action(targetId: string | null, actionId: string): CanvasEditorSettingsPatch | void | Promise<CanvasEditorSettingsPatch | void>;
+}
 /** Optional host handles for an add-on's own children; children remain owned by the add-on. */
 export interface CanvasLayerEditorApi {
 	/**
@@ -154,7 +203,7 @@ export interface CanvasLayerEditorApi {
 	 * layer-settings patch to persist the gesture through MyWallpaper's validated settings history;
 	 * do not call `layer.settings.set` from the callback.
 	 */
-	registerTargets(targets: readonly CanvasEditorTarget[], onTransform: CanvasEditorTargetTransformHandler): () => void;
+	registerTargets(targets: readonly CanvasEditorTarget[], onTransform: CanvasEditorTargetTransformHandler, inspector?: CanvasEditorInspectorAdapter): () => void;
 }
 export interface CanvasActionEvent {
 	key: string;

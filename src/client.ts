@@ -13,8 +13,8 @@ export function nativeClient(layer: CanvasLayerApi): Client {
   }
   async function connect(): Promise<NativeConnection> {
     if (disposed) throw new Error('The add-on is closed.')
-    if (!layer.native.companion.available) throw new Error('Activate the Windows companion in MyWallpaper to open local shortcuts.')
     if (!connection) {
+      // The SDK waits for verified attachment and rejects genuinely unavailable hosts.
       connection = layer.native.companion.connect().then(c => {
         if (disposed) { c.close(); throw new Error('The add-on is closed.') }
         unsubscribe = c.onMessage(payload => {
@@ -41,7 +41,8 @@ export function nativeClient(layer: CanvasLayerApi): Client {
       const c = await connect()
       const requestId = crypto.randomUUID()
       return new Promise<T>((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('The Windows action timed out. Try again.')) }, action.startsWith('pick') ? 180000 : 20000)
+        const usesDialog = action.startsWith('pick') || action === 'importConfiguration' || action === 'exportConfiguration'
+        const timer = setTimeout(() => { pending.delete(requestId); reject(new Error('The Windows action timed out. Try again.')) }, usesDialog ? 180000 : 20000)
         pending.set(requestId, { resolve: v => resolve(v as T), reject, timer })
         c.send({ kind: 'panels.command', requestId, action, input } as JsonValue).catch(error => {
           clearTimeout(timer); pending.delete(requestId); reject(error)
