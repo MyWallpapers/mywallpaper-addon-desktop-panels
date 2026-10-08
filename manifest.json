@@ -2,7 +2,7 @@
   "runtime": "canvas-native-v1",
   "name": "Desktop Panels",
   "description": "Compose your own desktop buttons: shapes, artwork, hover videos and Windows shortcuts. Local targets stay on this device.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "entry": "dist/assets/addon.js",
   "thumbnail": "assets/thumbnail.jpg",
   "deviceSettingsVersion": "1",

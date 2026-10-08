@@ -1,8 +1,15 @@
 import type { AddonValues } from '../generated/mywallpaper-runtime'
 import { icon } from './icons'
+import type { PanelGeometry } from './editorTargets'
 import { MAX_CONFIG_BYTES, clamp, constrain, emptyCollection, newButton, parseCollection, type Client, type Collection, type PanelButton, type TargetEntry } from './model'
 
-interface Options { settings: AddonValues; collection: unknown; save(c: Collection): Promise<void>; thumbnail?: boolean }
+interface Options {
+  settings: AddonValues
+  collection: unknown
+  save(c: Collection): Promise<void>
+  onEditingChange?(editing: boolean, reason?: 'save' | 'cancel'): void
+  thumbnail?: boolean
+}
 const en: Record<string, string> = {
   'Modifier': 'Edit', 'Terminer': 'Done', 'Annuler': 'Cancel', 'Ajouter': 'Add', 'Importer du bureau': 'Import desktop shortcuts',
   'Boutons': 'Buttons', 'Votre bureau, à votre façon.': 'Your desktop, your way.', 'Ajouter un bouton': 'Add a button',
@@ -49,6 +56,7 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
   const objectUrls = new Set<string>()
   const videos = new Set<HTMLVideoElement>()
   const autoplay = new Map<HTMLVideoElement, () => void>()
+  const targetPreviews = new Map<string, PanelGeometry>()
   let observer: IntersectionObserver | undefined
   let dialog: HTMLDialogElement | undefined
   let resize: ResizeObserver | undefined
@@ -125,19 +133,19 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
     const used = new Set(current().buttons.filter(b => b.media.kind !== 'none').map(b => b.media.path))
     for (const [key, entry] of blobs) if (!used.has(entry.path)) evictMedia(key, entry)
   }
-  function geometry(el: HTMLElement, b: PanelButton) {
-    el.style.left = b.x + 'px'; el.style.top = b.y + 'px'; el.style.width = b.width + 'px'; el.style.height = b.height + 'px'
+  function geometry(el: HTMLElement, b: PanelButton, layout: PanelGeometry = b) {
+    el.style.left = layout.x + 'px'; el.style.top = layout.y + 'px'; el.style.width = layout.width + 'px'; el.style.height = layout.height + 'px'
     el.style.setProperty('--button-color', b.color); el.style.setProperty('--button-radius', b.radius + 'px')
-    el.classList.toggle('is-compact', b.height < 100)
-    el.classList.toggle('is-tiny', b.width < 72 && b.showLabel)
-    el.style.setProperty('--button-padding', Math.min(24, b.width * .12, b.height * .16) + 'px')
+    el.classList.toggle('is-compact', layout.height < 100)
+    el.classList.toggle('is-tiny', layout.width < 72 && b.showLabel)
+    el.style.setProperty('--button-padding', Math.min(24, layout.width * .12, layout.height * .16) + 'px')
     el.dataset.shape = b.shape
     const outline = el.querySelector<SVGElement>('.dp-shape-outline')
     if (outline) {
-      outline.setAttribute('viewBox', '0 0 ' + b.width + ' ' + b.height)
+      outline.setAttribute('viewBox', '0 0 ' + layout.width + ' ' + layout.height)
       outline.querySelector('polygon')!.setAttribute('points', b.shape === 'triangle'
-        ? (b.width / 2) + ',2 ' + (b.width - 2) + ',' + (b.height - 2) + ' 2,' + (b.height - 2)
-        : (b.width / 4) + ',2 ' + (b.width * .75) + ',2 ' + (b.width - 2) + ',' + (b.height / 2) + ' ' + (b.width * .75) + ',' + (b.height - 2) + ' ' + (b.width / 4) + ',' + (b.height - 2) + ' 2,' + (b.height / 2))
+        ? (layout.width / 2) + ',2 ' + (layout.width - 2) + ',' + (layout.height - 2) + ' 2,' + (layout.height - 2)
+        : (layout.width / 4) + ',2 ' + (layout.width * .75) + ',2 ' + (layout.width - 2) + ',' + (layout.height / 2) + ' ' + (layout.width * .75) + ',' + (layout.height - 2) + ' ' + (layout.width / 4) + ',' + (layout.height - 2) + ' 2,' + (layout.height / 2))
     }
   }
   function fit() {
@@ -172,7 +180,7 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
     for (const b of c.buttons) {
       const el = document.createElement('button'); el.type = 'button'; el.className = 'dp-panel'
       el.dataset.id = b.id; el.setAttribute('aria-label', b.label || t('Lancer ce bouton')); el.title = b.label
-      geometry(el, b)
+      geometry(el, b, targetPreviews.get(b.id))
       const media = document.createElement('span'); media.className = 'dp-panel-media'; el.append(media)
       const foreground = document.createElement('span'); foreground.className = 'dp-panel-content'
       foreground.innerHTML = icon(b.icon) + (b.showLabel ? '<span>' + h(b.label) + '</span>' : '')
@@ -306,7 +314,8 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
   function edit() {
     if (options.thumbnail || editing) return
     if (loadError) { notice(t('Impossible de charger la configuration.')); return }
-    draft = structuredClone(saved); editing = true; dirty = false; selected = draft.buttons[0]?.id; render()
+    targetPreviews.clear(); draft = structuredClone(saved); editing = true; dirty = false; selected = draft.buttons[0]?.id
+    options.onEditingChange?.(true); render()
   }
   function add(target?: TargetEntry) {
     if (!draft || draft.buttons.length >= 1024) return
@@ -340,13 +349,15 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
       else if (name === 'add') { add(); render() }
       else if (name === 'cancel') {
         if (dirty && !window.confirm(t('Abandonner les modifications ?'))) return
-        editing = false; draft = undefined; dirty = false; render()
+        editing = false; draft = undefined; dirty = false; targetPreviews.clear()
+        options.onEditingChange?.(false, 'cancel'); render()
       } else if (name === 'done' && draft) {
         if (draft.buttons.some(item => !item.label.trim())) { notice(t('Un nom est nécessaire.')); return }
         const next = parseCollection(JSON.stringify(draft)); busy = true; render()
         try {
           await options.save(next); if (disposed) return
-          saved = next; draft = undefined; dirty = false; editing = false; notice(t('Disposition enregistrée.'))
+          saved = next; draft = undefined; dirty = false; editing = false; targetPreviews.clear()
+          options.onEditingChange?.(false, 'save'); notice(t('Disposition enregistrée.'))
         } finally { busy = false; if (!disposed) render() }
       } else if (name === 'desktop') await desktopImport()
       else if (name === 'duplicate' && b && draft) {
@@ -384,13 +395,25 @@ export function createPanels(root: HTMLElement, client: Client, options: Options
   render()
   return {
     edit, notice,
+    previewTarget(id: string, preview?: PanelGeometry) {
+      const button = current().buttons.find(item => item.id === id)
+      if (!button) { targetPreviews.delete(id); return }
+      if (preview) targetPreviews.set(id, { ...preview })
+      else targetPreviews.delete(id)
+      // Collection IDs are validated against /^[\w-]{1,80}$/ before rendering.
+      const element = stage?.querySelector<HTMLElement>('.dp-panel[data-id="' + id + '"]')
+      if (element) geometry(element, button, targetPreviews.get(id))
+    },
     exportConfiguration() { void action('export') },
     importConfiguration() { edit(); if (editing) void action('jsonImport') },
     configure(values: AddonValues) { settings = values; if (!disposed) render() },
-    load(value: unknown) { if (!disposed && !editing && read(value)) render() },
+    load(value: unknown) {
+      if (disposed || editing || !read(value)) return
+      targetPreviews.clear(); render()
+    },
     dispose() {
       disposed = true; revision++; clearTimeout(toastTimer); observer?.disconnect(); resize?.disconnect(); dialog?.remove()
-      document.removeEventListener('visibilitychange', onVisibility); stopVideos()
+      document.removeEventListener('visibilitychange', onVisibility); stopVideos(); targetPreviews.clear()
       objectUrls.forEach(url => URL.revokeObjectURL(url)); blobs.clear(); objectUrls.clear(); host.remove()
     },
   }

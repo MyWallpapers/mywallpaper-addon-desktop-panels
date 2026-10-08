@@ -1,11 +1,13 @@
 # Desktop Panels
 
-A MyWallpaper add-on for composing a personal desktop launcher from web buttons. This checkout is a local preview, not a published release.
+A MyWallpaper add-on for composing a personal desktop launcher from buttons. This branch starts from Desktop Panels v0.1.0 and adds optional host child editing; the new capability requires a host that implements the Canvas child-editor API.
 
 ## What is implemented
 
 - One visual add-on containing a collection of buttons, not independent sub-add-ons.
 - A visual editor opened by **Manage buttons** in the existing MyWallpaper settings, with **Import configuration** and **Export configuration** actions there as well.
+- Optional Canvas child targets: compatible hosts can move and resize individual buttons with the host editor; older hosts keep the existing **Manage buttons** editor.
+- The host editor exposes up to 256 buttons per layer; all buttons remain available in **Manage buttons**.
 - Rectangles with adjustable corners, ellipses, triangles and hexagons; per-button size, position, color, label and icon.
 - Pointer drag and resize; numeric position/size fields; arrow keys move a focused button by one canvas unit, Shift + arrow by ten.
 - Images and muted, looping videos, including playback only on hover/focus.
@@ -37,6 +39,8 @@ The companion runs with ordinary user privileges after MyWallpaper's exact nativ
 
 The versioned layout JSON uses ordinary **layer settings**: shapes, positions, colors, names and shared URLs follow the wallpaper, so applying a wallpaper restores its creator's layout. Private application/file targets, arguments and local media paths use **device settings**, partitioned by layer and button ID. They never enter the published wallpaper. The existing host retains account, add-on source and schema isolation. Copies remain independent.
 
+Child-target commits change only the portable layout in layer settings and use the host's existing settings history. They never serialize the merged editor view, so private device bindings stay local. If the host marks this add-on's root permanent, that same root and its layout follow the account workspace across composition changes; Desktop Panels does not copy buttons between roots.
+
 The editor combines both sets of values transparently. **Export configuration** saves a complete JSON backup, including local references; **Import configuration** loads it into the editor for confirmation. Exports do not embed media files, and local references must exist on the receiving PC. Media bytes are read only when needed; moving or deleting an original media file requires selecting it again.
 
 The layout uses a 1600 × 900 reference canvas and scales proportionally to the available layer. It does not change the browser zoom or the Windows taskbar. New installs start empty; demonstration data exists only in the preview and thumbnail modes.
@@ -45,7 +49,7 @@ The layout uses a 1600 × 900 reference canvas and scales proportionally to the 
 
 This version is a temporary, ordinary add-on using the existing Canvas, native companion and device-settings contracts. It includes no Core changes, Explorer modifications, cross-copy synchronization service or additional storage API.
 
-Each layer keeps the layout supplied by its wallpaper unless the user edits it or imports another configuration. There is no automatic global replacement of layouts when changing wallpaper; JSON export/import provides explicit manual reuse.
+Each composition-bound root keeps the layout supplied by its wallpaper. A root the user marks permanent keeps its own layout across composition changes. JSON export/import remains the explicit way to copy a collection between roots.
 
 Concurrent edits across different copies use the host's existing whole-value save behavior; this temporary version adds no conflict-resolution mechanism. The existing Windows desktop pointer routing also remains unchanged. The browser preview exercises the editor and actions but does not establish Windows desktop hit-testing behavior.
 
