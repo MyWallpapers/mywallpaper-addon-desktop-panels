@@ -102,15 +102,15 @@ test('unsupported rotation cannot change child data', () => {
   assert.equal(collection.buttons[0]?.y, 90)
 })
 
-test('host registration bounds labels and exposes only the first 256 targets', () => {
+test('host registration bounds labels and exposes every supported collection item', () => {
   const collection = buttonCollection()
   collection.buttons[0]!.label = 'W'.repeat(120)
-  for (let index = 1; index < 257; index++) {
+  for (let index = 1; index < 1024; index++) {
     collection.buttons.push({ ...structuredClone(collection.buttons[0]!), id: `panel-${index}` })
   }
 
   const targets = createEditorTargets(collection, { width: 1600, height: 900 })
-  assert.equal(targets.length, 256)
+  assert.equal(targets.length, 1024)
   assert.equal(targets[0]?.label.length, 80)
-  assert.equal(targets.at(-1)?.id, 'panel-255')
+  assert.equal(targets.at(-1)?.id, 'panel-1023')
 })

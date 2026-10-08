@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::path::Path;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -16,6 +17,39 @@ pub const MAX_IMAGE_BYTES: u64 = 12 * 1024 * 1024;
 pub const MAX_VIDEO_BYTES: u64 = 64 * 1024 * 1024;
 pub const MEDIA_CHUNK_BYTES: usize = 256 * 1024;
 pub const MAX_ARGUMENTS_UTF16: usize = 8192;
+pub const MAX_CONFIGURATION_BYTES: usize = 192 * 1024;
+
+pub fn validate_configuration(value: &str) -> Result<(), String> {
+    if value.len() > MAX_CONFIGURATION_BYTES {
+        return Err("Configuration exceeds the 192 KiB size limit.".to_owned());
+    }
+    let parsed: serde_json::Value = serde_json::from_str(value)
+        .map_err(|error| format!("Configuration is not valid JSON: {error}"))?;
+    if !parsed.is_object() {
+        return Err("Configuration must be a JSON object.".to_owned());
+    }
+    Ok(())
+}
+
+pub fn read_configuration(reader: impl Read) -> Result<String, String> {
+    // Bound the actual read even if the selected file grows after inspection.
+    let mut bytes = Vec::new();
+    reader
+        .take((MAX_CONFIGURATION_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("Could not read the configuration: {error}"))?;
+    if bytes.len() > MAX_CONFIGURATION_BYTES {
+        return Err("Configuration exceeds the 192 KiB size limit.".to_owned());
+    }
+    let mut value = String::from_utf8(bytes)
+        .map_err(|_| "Configuration must use UTF-8 encoding.".to_owned())?;
+    // Match the previous browser file reader, including Windows UTF-8 BOM files.
+    if value.starts_with('\u{feff}') {
+        value.drain(..'\u{feff}'.len_utf8());
+    }
+    validate_configuration(&value)?;
+    Ok(value)
+}
 
 pub fn classify_target(value: &str) -> Result<TargetKind, String> {
     if value.is_empty() || value.trim() != value || value.contains('\0') {
@@ -171,6 +205,26 @@ fn is_unc_path(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn configuration_is_bounded_utf8_json_without_transforming_private_paths() {
+        let value = r#"{"version":1,"target":"C:\\Users\\Élodie\\Notes.lnk"}"#;
+        assert_eq!(read_configuration(value.as_bytes()).unwrap(), value);
+        assert_eq!(
+            read_configuration(format!("\u{feff}{value}").as_bytes()).unwrap(),
+            value
+        );
+        assert!(read_configuration(&[0xff][..]).is_err());
+        assert!(validate_configuration("[]").is_err());
+        assert!(validate_configuration("{broken").is_err());
+        assert!(validate_configuration(&" ".repeat(MAX_CONFIGURATION_BYTES + 1)).is_err());
+    }
+
+    #[test]
+    fn configuration_read_stops_at_the_limit_even_if_the_source_keeps_growing() {
+        let mut source = std::io::repeat(b' ');
+        assert!(read_configuration(&mut source).is_err());
+    }
 
     #[test]
     fn accepts_only_absolute_windows_paths_or_allowed_schemes() {

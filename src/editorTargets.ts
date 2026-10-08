@@ -29,8 +29,8 @@ interface FittedCanvas {
   offsetY: number
 }
 
-// The host caps one Canvas child-target registration at 256 items.
-const MAX_REGISTERED_TARGETS = 256
+// The host supports all 1024 collection items; the sidebar paginates their list.
+const MAX_REGISTERED_TARGETS = 1024
 
 function fittedCanvas(collection: Collection, bounds: LayerRootBounds): FittedCanvas | undefined {
   if (!Number.isFinite(bounds.width) || !Number.isFinite(bounds.height)
