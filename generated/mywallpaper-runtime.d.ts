@@ -16,6 +16,9 @@ export type RuntimeInstance = {
 export type ResourceValue = {
 	"kind": "live";
 	url: string;
+} | {
+	"kind": "cached-public";
+	url: string;
 };
 export type AddonValues = Record<string, JsonValue>;
 interface ServiceCaller {
@@ -116,6 +119,43 @@ export interface LayerSettingsApi {
 	set(partial: AddonValues): Promise<void>;
 	subscribe(listener: CanvasApiListener<AddonValues>): () => void;
 }
+/** Geometry for one add-on-owned item, relative to its layer root (0–100%). */
+export interface CanvasEditorTargetGeometry {
+	xPercent: number;
+	yPercent: number;
+	widthPercent: number;
+	heightPercent: number;
+	rotation: number;
+}
+/** One stable item the host may expose in its layer editor. */
+export interface CanvasEditorTarget {
+	id: string;
+	label: string;
+	geometry: CanvasEditorTargetGeometry;
+	canMove: boolean;
+	canResize: boolean;
+	canRotate: boolean;
+}
+export type CanvasEditorTargetTransformPhase = "preview" | "commit" | "cancel";
+export type CanvasEditorTargetTransformAction = "move" | "resize" | "rotate";
+export interface CanvasEditorTargetTransformEvent {
+	targetId: string;
+	action: CanvasEditorTargetTransformAction;
+	phase: CanvasEditorTargetTransformPhase;
+	geometry: CanvasEditorTargetGeometry;
+	previousGeometry: CanvasEditorTargetGeometry;
+}
+export type CanvasEditorTargetTransformHandler = (event: CanvasEditorTargetTransformEvent) => void | AddonValues;
+/** Optional host handles for an add-on's own children; children remain owned by the add-on. */
+export interface CanvasLayerEditorApi {
+	/**
+	 * Replace this layer's reported targets. The returned cleanup unregisters this registration.
+	 * Transform callbacks are synchronous: keep preview/cancel visual and on commit return one
+	 * layer-settings patch to persist the gesture through MyWallpaper's validated settings history;
+	 * do not call `layer.settings.set` from the callback.
+	 */
+	registerTargets(targets: readonly CanvasEditorTarget[], onTransform: CanvasEditorTargetTransformHandler): () => void;
+}
 export interface CanvasActionEvent {
 	key: string;
 }
@@ -126,6 +166,8 @@ export interface LayerLifecycleApi {
 	onDispose(listener: () => void): () => void;
 }
 export interface LayerResourcesApi {
+	/** Resolves live URLs unchanged; opt-in cached-public assets may resolve to a
+	 * local data URL. Only declared settings are authorized; failure returns the source. */
 	resolve(value: ResourceValue): Promise<string>;
 }
 export interface CanvasRuntimeApi {
@@ -145,6 +187,8 @@ export interface CanvasLayerApi {
 	readonly bus: CanvasBus;
 	/** Native attachment owned by this exact layer; it cannot address another add-on. */
 	readonly native: LayerNativeApi;
+	/** Optional editor handles for add-on-owned child items. */
+	readonly editor?: CanvasLayerEditorApi;
 }
 /** Explicit capability object passed only to an add-on's exported `mount`. */
 export interface CanvasAddonMountContext {

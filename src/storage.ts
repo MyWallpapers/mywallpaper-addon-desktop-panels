@@ -139,12 +139,17 @@ export function splitCollection(value: unknown, deviceValue: unknown, layerId: s
   return { portable, deviceSettings: encode(store) }
 }
 
+/** Read the wallpaper-owned value without merging any machine-local bindings. */
+export function readPortableCollection(value: unknown): Collection {
+  return value === undefined ? emptyCollection() : portableCollectionValue(value)
+}
+
 /** Recombine the portable layout and private bindings for the editor/runtime. */
 export function readCollection(portableValue: unknown, deviceValue: unknown, layerId: string): string {
   try {
     requireLayerId(layerId)
     const store = decode(deviceValue)
-    const portable = portableValue === undefined ? emptyCollection() : portableCollectionValue(portableValue)
+    const portable = readPortableCollection(portableValue)
     return JSON.stringify(mergeBindings(portable, own(store.layers, layerId) ? store.layers[layerId] : undefined))
   } catch {
     return '' // Keep the editor's existing invalid-data guard effective.

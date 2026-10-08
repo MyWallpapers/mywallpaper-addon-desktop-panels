@@ -66,7 +66,7 @@
 .dp-toast { position: absolute; z-index: 10; bottom: 24px; left: 50%; transform: translate(-50%, 6px); padding: 12px 18px; max-width: min(90%, 540px); border-radius: 12px; background: #1d2539; color: var(--dp-ink); opacity: 0; pointer-events: none; transition: opacity 180ms ease, transform 180ms ease; box-shadow: 0 8px 24px #00000030; }
 .dp-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
 .dp-app.is-editing { pointer-events: auto; background: #0c1019; }
-.is-editing .dp-body { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.dp-app.is-editing .dp-body { display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .dp-editor-header { display: flex; gap: 22px; align-items: center; padding: 15px 22px; border-bottom: 1px solid var(--dp-line); }
 .dp-editor-title { font-size: 18px; font-weight: 500; flex-shrink: 0; letter-spacing: -.02em; }
 .dp-editor-title > span { display: block; font-size: 12px; color: var(--dp-muted); font-weight: 400; letter-spacing: 0; }
@@ -88,11 +88,11 @@
 .dp-local p { margin: 12px 0 0; }
 .dp-canvas-column { padding: 22px; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .dp-canvas-label { display: flex; gap: 12px; justify-content: space-between; color: var(--dp-muted); font-size: 12px; padding-bottom: 14px; }
-.is-editing .dp-viewport { flex: 1; border-radius: 12px; background: #070a11; border: 1px solid #ffffff12; }
-.is-editing .dp-stage { background-image: radial-gradient(#ffffff18 .8px, transparent .8px); background-size: 24px 24px; }
-.is-editing .dp-panel { touch-action: none; cursor: grab; }
-.is-editing .dp-panel:active { cursor: grabbing; }
-.is-editing .dp-panel.is-selected { border-color: #cce2ff; outline: 2px solid #bdd6ff70; outline-offset: 4px; }
+.dp-app.is-editing .dp-viewport { flex: 1; border-radius: 12px; background: #070a11; border: 1px solid #ffffff12; }
+.dp-app.is-editing .dp-stage { background-image: radial-gradient(#ffffff18 .8px, transparent .8px); background-size: 24px 24px; }
+.dp-app.is-editing .dp-panel { touch-action: none; cursor: grab; }
+.dp-app.is-editing .dp-panel:active { cursor: grabbing; }
+.dp-app.is-editing .dp-panel.is-selected { border-color: #cce2ff; outline: 2px solid #bdd6ff70; outline-offset: 4px; }
 .dp-resize-handle { position: absolute; right: 5px; bottom: 5px; width: 15px; height: 15px; z-index: 3; background: #cce2ff; border: 3px solid #182232; border-radius: 5px; cursor: nwse-resize; }
 .dp-panel:is([data-shape='hexagon'], [data-shape='ellipse'], [data-shape='triangle']) .dp-resize-handle { right: calc(50% - 7px); bottom: 7px; }
 .dp-inspector { border-left: 1px solid var(--dp-line); overflow: auto; padding: 17px 18px; min-height: 0; }
